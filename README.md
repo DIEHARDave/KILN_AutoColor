@@ -18,7 +18,10 @@ The plugin wraps `SDCARD_PRINT_FILE`, the command Mainsail, Fluidd, HelixScreen 
    - **color**: CIE76 ΔE in CIELAB, so pairs are picked the way the eye sees them. ΔE 30 or more is reported as a weak match;
    - **sharing**: two of the file's colors only print from the same slot when giving each its own would be more than `share_penalty` worse;
    - ties keep the default map;
-4. sets the map with `IFS_MAP_TOOL` and starts the print. Kiln resets the map when the print ends.
+4. sets the map with `IFS_MAP_TOOL` and starts the print;
+5. puts the map back to T0–T3 → slots 1–4 when the print ends, however it ends (`reset_at_end`). Kiln resets it too, but not after a print cancelled while paused, which would leave a map the next print start takes for a manual one.
+
+To reset the map by hand at any time: `IFS_MAP_TOOL RESET=1`.
 
 The console shows what it picked:
 
@@ -65,7 +68,7 @@ Klipper restarts. Updates show up in Mainsail / Fluidd's Software Updates (`kiln
 
 ## Options
 
-Add a `[kiln_autocolor]` section to `local.cfg`; see [plugin.cfg](plugin.cfg) for all options and their defaults (`enabled`, `respect_manual_map`, `stop_on_mismatch`, `family_penalty`, `share_penalty`).
+Add a `[kiln_autocolor]` section to `local.cfg`; see [plugin.cfg](plugin.cfg) for all options and their defaults (`enabled`, `respect_manual_map`, `reset_at_end`, `stop_on_mismatch`, `family_penalty`, `share_penalty`).
 
 ## Tests
 
@@ -75,7 +78,7 @@ python3 -m unittest discover tests
 
 ## Status
 
-Tested: unit tests, and the matching run against real OrcaSlicer files and the live slots on an AD5X with Kiln OS 2026.02.3. Not yet tested: a real print started through the wrapper.
+Tested on an AD5X with Kiln OS 2026.02.3: unit tests, the matching against real OrcaSlicer files and the live slots, and a real 3-color print started from the web UI (map set before the file opened). Not yet tested on the printer: the reset after a print cancelled while paused (unit-tested only).
 
 ## License
 

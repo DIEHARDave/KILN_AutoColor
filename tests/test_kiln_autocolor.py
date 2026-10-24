@@ -50,8 +50,16 @@ class CommandError(Exception):
 
 
 class FakeReactor:
+    NOW = 0.
+
+    def __init__(self):
+        self.timers = []
+
     def monotonic(self):
         return 100.
+
+    def register_timer(self, callback, when):
+        self.timers.append(callback)
 
 
 class FakeGcode:
@@ -73,9 +81,13 @@ class FakeGcode:
 
     def run_script_from_command(self, script):
         self.scripts.append(script)
-        if script.startswith("IFS_MAP_TOOL"):
+        if script.startswith("IFS_MAP_TOOL TOOL="):
             p = dict(kv.split('=') for kv in script.split()[1:])
             self.ifs.tool_map[int(p['TOOL'])] = int(p['SLOT'])
+        elif script == "IFS_MAP_TOOL RESET=1":
+            self.ifs.tool_map = [1, 2, 3, 4]
+
+    run_script = run_script_from_command
 
 
 class FakeGcmd:
@@ -136,9 +148,10 @@ class FakePrinter:
     def __init__(self, objects):
         self.objects = objects
         self.handlers = {}
+        self.reactor = FakeReactor()
 
     def get_reactor(self):
-        return FakeReactor()
+        return self.reactor
 
     def lookup_object(self, name, default=None):
         return self.objects.get(name, default)
@@ -367,6 +380,32 @@ class PluginTest(unittest.TestCase):
         self.gcode.commands["AUTOCOLOR"](FakeGcmd(FILENAME="cat.gcode",
                                                   APPLY=1))
         self.assertEqual(self.ifs.tool_map, [4, 1, 3, 2])
+
+    def test_reset_after_cancel_while_paused(self):
+        plugin = self.make()
+        self.start()
+        for state in ("printing", "paused", "cancelled"):
+            plugin._note_print_state(state)
+        self.assertEqual(self.ifs.tool_map, [1, 2, 3, 4])
+        self.assertEqual(self.gcode.scripts[-1], "IFS_MAP_TOOL RESET=1")
+
+    def test_no_reset_when_already_default(self):
+        plugin = self.make()
+        for state in ("standby", "printing", "complete"):
+            plugin._note_print_state(state)
+        self.assertEqual(self.gcode.scripts, [])
+
+    def test_no_reset_on_pause_or_option_off(self):
+        plugin = self.make(reset_at_end=False)
+        self.start()
+        for state in ("printing", "paused", "printing", "complete"):
+            plugin._note_print_state(state)
+        self.assertEqual(self.ifs.tool_map, [4, 1, 3, 2])
+
+    def test_watch_timer_registered(self):
+        self.make()
+        self.printer.handlers["klippy:ready"]()
+        self.assertEqual(len(self.printer.reactor.timers), 1)
 
     def test_enable_command_saves(self):
         plugin = self.make()

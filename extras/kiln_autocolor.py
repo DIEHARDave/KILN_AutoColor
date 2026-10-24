@@ -45,6 +45,11 @@ SHARE_COST = 60.
 FAMILIES = ("PETG", "PCTG", "PET", "PLA", "ABS", "ASA", "TPU", "TPE", "HIPS",
             "PVA", "BVOH", "PPS", "PP", "PC", "PA", "PE")
 SAVE_VARIABLE = "autocolor_enabled"
+# print_stats states. Kiln resets the tool map itself only when a print it
+# saw "printing" ends, not one cancelled while paused (which would leave a
+# map that the next print start takes for a manual one).
+PRINT_ACTIVE = ("printing", "paused")
+PRINT_ENDED = ("complete", "cancelled", "error", "standby")
 
 COLOR_RE = re.compile(r"^#?([0-9a-fA-F]{6}|[0-9a-fA-F]{3})$")
 KEY_RE = re.compile(r"^;\s*([a-z_]+(?: [a-z_]+)*(?: \[[a-z0-9]+\])?)\s*=\s*(.*)$")
@@ -263,11 +268,15 @@ class KilnAutoColor:
         self.stop_on_mismatch = config.getboolean('stop_on_mismatch', False)
         self.respect_manual_map = config.getboolean('respect_manual_map',
                                                     True)
+        self.reset_at_end = config.getboolean('reset_at_end', True)
+        self.print_state = None
         self.sdcard = None
         self.print_file = None
         self.last = {}
         self.printer.register_event_handler("klippy:connect",
                                             self._handle_connect)
+        self.printer.register_event_handler("klippy:ready",
+                                            self._handle_ready)
         self.gcode.register_command("AUTOCOLOR", self.cmd_AUTOCOLOR,
                                     desc=self.cmd_AUTOCOLOR_help)
         self.gcode.register_command("AUTOCOLOR_ENABLE",
@@ -291,6 +300,34 @@ class KilnAutoColor:
             "SDCARD_PRINT_FILE", self.cmd_SDCARD_PRINT_FILE,
             desc="Start a print from a file (AutoColor maps its tools to "
                  "the IFS slots first)")
+
+    def _handle_ready(self):
+        reactor = self.printer.get_reactor()
+        reactor.register_timer(self._watch_print, reactor.NOW)
+
+    def _watch_print(self, eventtime):
+        ps = self.printer.lookup_object('print_stats', None)
+        if ps is not None:
+            self._note_print_state(ps.get_status(eventtime).get('state'))
+        return eventtime + 1.
+
+    def _note_print_state(self, state):
+        was, self.print_state = self.print_state, state
+        if self.reset_at_end and was in PRINT_ACTIVE and state in PRINT_ENDED:
+            self._reset_map()
+
+    def _reset_map(self):
+        ifs = self._ifs()
+        if ifs is None:
+            return
+        try:
+            now = self.printer.get_reactor().monotonic()
+            tmap = ifs.get_status(now).get('tool_map', {})
+            if any(int(tmap.get(str(t), DEFAULT_MAP[t])) != DEFAULT_MAP[t]
+                   for t in TOOLS):
+                self.gcode.run_script("IFS_MAP_TOOL RESET=1")
+        except Exception:
+            LOGGER.exception("kiln_autocolor: tool map reset failed")
 
     # Printer state
     def _ifs(self):
