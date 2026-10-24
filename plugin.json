@@ -1,0 +1,10 @@
+{
+  "name": "autocolor",
+  "description": "Maps the slicer's tools to the IFS slots by color and material when a print starts, so the spools don't have to be mapped by hand",
+  "version": "0.1.0",
+  "author": "DIEHARDave",
+  "url": "https://github.com/DIEHARDave/KILN_AutoColor",
+  "requires_os": "1.0",
+  "requires": [],
+  "conflicts": []
+}
