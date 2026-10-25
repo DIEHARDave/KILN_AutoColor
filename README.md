@@ -57,6 +57,8 @@ ENABLE_PLUGIN NAME=autocolor
 
 Klipper restarts. Updates show up in Mainsail / Fluidd's Software Updates (`kiln-autocolor`) after Moonraker's next restart.
 
+After a manual `git pull`, restart the Klipper service (`/etc/init.d/S61klipper restart` as root, or reboot). `FIRMWARE_RESTART` and `RESTART` keep the already-loaded Python module, so the old code keeps running. Updating from Software Updates restarts the service itself.
+
 ## Commands
 
 | Command | |
