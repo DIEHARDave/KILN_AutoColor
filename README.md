@@ -80,7 +80,7 @@ python3 -m unittest discover tests
 
 ## Status
 
-Tested on an AD5X with Kiln OS 2026.02.3: unit tests, the matching against real OrcaSlicer files and the live slots, and a real 3-color print started from the web UI (map set before the file opened). Not yet tested on the printer: the reset after a print cancelled while paused (unit-tested only).
+Tested on an AD5X with Kiln OS 2026.02.3: unit tests, the matching against real OrcaSlicer files and the live slots, real 3-color prints started from the web UI (map set before the file opened), and the map reset after a print cancelled while paused.
 
 ## License
 
