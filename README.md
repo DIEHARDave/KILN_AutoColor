@@ -1,3 +1,5 @@
+***No longer needed*** Feature built in as of Kiln OS v0.0.23
+
 # KILN_AutoColor
 
 Automatic spool mapping for the FlashForge AD5X IFS on [Kiln OS](https://github.com/djvalic), like zMod's auto color selection: when a print starts, each slicer tool (T0–T3) is pointed at the loaded IFS slot whose material and color fit it best, so you don't have to map spools by hand.
